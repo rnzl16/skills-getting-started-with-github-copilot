@@ -88,15 +88,16 @@ def get_activities():
     return activities
 
 
+def get_activity_or_404(activity_name: str):
+    if activity_name not in activities:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    return activities[activity_name]
+
+
 @app.post("/activities/{activity_name}/signup")
 def signup_for_activity(activity_name: str, email: str):
     """Sign up a student for an activity"""
-    # Validate activity exists
-    if activity_name not in activities:
-        raise HTTPException(status_code=404, detail="Activity not found")
-
-    # Get the specific activity
-    activity = activities[activity_name]
+    activity = get_activity_or_404(activity_name)
 
     # Validate student is not already signed up
     if email in activity["participants"]:
@@ -105,3 +106,21 @@ def signup_for_activity(activity_name: str, email: str):
     # Add student
     activity["participants"].append(email)
     return {"message": f"Signed up {email} for {activity_name}"}
+
+
+@app.delete("/activities/{activity_name}/signup")
+def unregister_for_activity(activity_name: str, email: str):
+    """Remove a student from an activity"""
+    activity = get_activity_or_404(activity_name)
+
+    if email not in activity["participants"]:
+        raise HTTPException(status_code=404, detail="Student is not signed up for this activity")
+
+    activity["participants"].remove(email)
+    return {"message": f"Unregistered {email} from {activity_name}"}
+
+
+@app.delete("/activities/{activity_name}/participants/{email}")
+def unregister_participant_by_path(activity_name: str, email: str):
+    """Backward-compatible delete endpoint using the participant email in the URL."""
+    return unregister_for_activity(activity_name, email)
